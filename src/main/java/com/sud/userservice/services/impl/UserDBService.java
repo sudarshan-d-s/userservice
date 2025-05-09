@@ -1,11 +1,15 @@
 package com.sud.userservice.services.impl;
 
+import com.sud.userservice.exceptions.IncorrectPasswordException;
+import com.sud.userservice.exceptions.UserAlreadyExistsException;
+import com.sud.userservice.exceptions.UserDoesNotExistsException;
 import com.sud.userservice.models.Token;
 import com.sud.userservice.models.User;
 import com.sud.userservice.repositories.RoleRepository;
 import com.sud.userservice.repositories.TokenRepository;
 import com.sud.userservice.repositories.UserRepository;
 import com.sud.userservice.services.UserService;
+import com.sud.userservice.exceptions.TokenInvalidException;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,25 +22,21 @@ public class UserDBService implements UserService {
 
     private final UserRepository userRepository;
     private final TokenRepository tokenRepository;
-    private final RoleRepository roleRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
 
     public UserDBService(UserRepository userRepository, TokenRepository tokenRepository, RoleRepository roleRepository, BCryptPasswordEncoder bCryptPasswordEncoder) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
-        this.roleRepository = roleRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
     }
 
-
     @Override
-    public User signUp(String name, String email, String password) {
+    public User signUp(String name, String email, String password) throws UserAlreadyExistsException {
 
         Optional<User> usr = userRepository.findByEmail(email);
 
         if(usr.isPresent()){
-            //TODO throw new UserAlreadyExistsException();
-            return null;
+            throw new UserAlreadyExistsException("The email "+email+" is already in use!");
         }
 
         User user = new User();
@@ -48,17 +48,15 @@ public class UserDBService implements UserService {
     }
 
     @Override
-    public Token login(String email, String password) {
+    public Token login(String email, String password) throws UserDoesNotExistsException, IncorrectPasswordException {
         Optional<User> optionalUser = userRepository.findByEmail(email);
 
         if(optionalUser.isEmpty()){
-            //TODO throw new UserDoesNotExistsException();
-            return null;
+            throw new UserDoesNotExistsException("The email ["+email+"] is not registered!");
         }
         User user = optionalUser.get();
         if(!bCryptPasswordEncoder.matches(password, user.getHashedPassword())){
-            //TODO throw new IncorrectPasswordException();
-            return null;
+            throw new IncorrectPasswordException("Incorrect password!");
         }
 
         Token token = createToken(user);
@@ -71,13 +69,31 @@ public class UserDBService implements UserService {
     }
 
     @Override
-    public void logout() {
+    public User logout(String tokenStr) throws TokenInvalidException {
 
+        Optional<Token> tokenOptional = tokenRepository
+                .findByValueAndIsDeletedAndExpiresAtGreaterThan(tokenStr, false, LocalDateTime.now());
+
+        Token token = tokenOptional.orElseThrow(() ->{
+            return new TokenInvalidException("Token ["+tokenStr+"] is invalid!");
+        });
+
+        token.setIsDeleted(true);
+
+        Token savedToken = tokenRepository.save(token);
+
+        return savedToken.getUser();
     }
 
     @Override
-    public User validate(String token) {
-        return null;
+    public User validate(String tokenStr) throws TokenInvalidException {
+
+        Optional<Token> userOptional = tokenRepository
+                .findByValueAndIsDeletedAndExpiresAtGreaterThan(tokenStr, false, LocalDateTime.now());
+
+        return userOptional.map(Token::getUser).orElseThrow(() ->{
+            return new TokenInvalidException("Token ["+tokenStr+"] is invalid!");
+        });
     }
 
     private Token createToken(User user){
