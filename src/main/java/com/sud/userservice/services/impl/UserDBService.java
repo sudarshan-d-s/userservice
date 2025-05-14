@@ -31,7 +31,7 @@ public class UserDBService implements UserService {
     }
 
     @Override
-    public User signUp(String name, String email, String password) throws UserAlreadyExistsException {
+    public User signUp(String name, String email, String password) {
 
         Optional<User> usr = userRepository.findByEmail(email);
 
@@ -48,7 +48,7 @@ public class UserDBService implements UserService {
     }
 
     @Override
-    public Token login(String email, String password) throws UserDoesNotExistsException, IncorrectPasswordException {
+    public Token login(String email, String password) {
         Optional<User> optionalUser = userRepository.findByEmail(email);
 
         if(optionalUser.isEmpty()){
@@ -69,7 +69,7 @@ public class UserDBService implements UserService {
     }
 
     @Override
-    public User logout(String tokenStr) throws TokenInvalidException {
+    public void logout(String tokenStr) {
 
         Optional<Token> tokenOptional = tokenRepository
                 .findByValueAndIsDeletedAndExpiresAtGreaterThan(tokenStr, false, LocalDateTime.now());
@@ -79,14 +79,11 @@ public class UserDBService implements UserService {
         });
 
         token.setIsDeleted(true);
-
-        Token savedToken = tokenRepository.save(token);
-
-        return savedToken.getUser();
+        tokenRepository.save(token);
     }
 
     @Override
-    public User validate(String tokenStr) throws TokenInvalidException {
+    public User validate(String tokenStr) {
 
         Optional<Token> userOptional = tokenRepository
                 .findByValueAndIsDeletedAndExpiresAtGreaterThan(tokenStr, false, LocalDateTime.now());

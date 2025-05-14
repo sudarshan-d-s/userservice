@@ -9,12 +9,12 @@ import com.sud.userservice.exceptions.TokenInvalidException;
 
 public interface UserService {
 
-    User signUp(String name, String email, String hashedPassword) throws UserAlreadyExistsException;
+    User signUp(String name, String email, String hashedPassword);
 
-    Token login(String email, String hashedPassword) throws UserDoesNotExistsException, IncorrectPasswordException;
+    Token login(String email, String hashedPassword);
 
-    public User logout(String tokenStr) throws TokenInvalidException;
+    public void logout(String tokenStr);
 
-    User validate(String token) throws TokenInvalidException;
+    User validate(String token);
 
 }
