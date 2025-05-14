@@ -15,7 +15,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class UserDBService implements UserService {
@@ -95,8 +97,15 @@ public class UserDBService implements UserService {
 
     private Token createToken(User user){
         Token token = new Token();
-        token.setValue(RandomStringUtils.randomAlphanumeric(128));
         token.setUser(user);
+        token.setValue(RandomStringUtils.randomAlphanumeric(128));
+
+        LocalDateTime localDateTime = LocalDateTime.now();
+        token.setExpiresAt(localDateTime.plusDays(30));
+
+        token.setIsDeleted(false);
+        token.setUser(user);
+
         return token;
     }
 
